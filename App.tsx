@@ -2,16 +2,20 @@ import React, { useState, useCallback } from 'react';
 import MapComponent from './components/MapComponent';
 import MyLocationButton from './components/MyLocationButton';
 
-type Position = [number, number];
+type LocationData = {
+    coords: [number, number];
+    accuracy: number;
+};
 
 const App: React.FC = () => {
-    const [position, setPosition] = useState<Position | null>(null);
+    const [location, setLocation] = useState<LocationData | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
     const handleLocateMe = useCallback(() => {
         setLoading(true);
         setError(null);
+        setLocation(null); // Clear previous location data on a new request
 
         if (!navigator.geolocation) {
             setError("Geolocation is not supported by your browser.");
@@ -21,8 +25,8 @@ const App: React.FC = () => {
 
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                const { latitude, longitude } = pos.coords;
-                setPosition([latitude, longitude]);
+                const { latitude, longitude, accuracy } = pos.coords;
+                setLocation({ coords: [latitude, longitude], accuracy });
                 setLoading(false);
             },
             (err) => {
@@ -31,10 +35,10 @@ const App: React.FC = () => {
                         setError("You denied the request for Geolocation.");
                         break;
                     case err.POSITION_UNAVAILABLE:
-                        setError("Location information is unavailable.");
+                        setError("Location information is unavailable. This can happen indoors or in areas with poor satellite signal.");
                         break;
                     case err.TIMEOUT:
-                        setError("The request to get user location timed out.");
+                        setError("The request to get user location timed out. Please try again in an open area.");
                         break;
                     default:
                         setError("An unknown error occurred.");
@@ -44,7 +48,7 @@ const App: React.FC = () => {
             },
             {
                 enableHighAccuracy: true,
-                timeout: 10000,
+                timeout: 20000, // Increased timeout to 20 seconds for a better GPS lock
                 maximumAge: 0,
             }
         );
@@ -54,7 +58,7 @@ const App: React.FC = () => {
         <div className="relative h-screen w-screen bg-gray-900 text-white font-sans overflow-hidden">
             {/* Map Background */}
             <div className="absolute inset-0 z-0">
-                <MapComponent position={position} />
+                <MapComponent position={location ? location.coords : null} />
             </div>
 
             {/* UI Overlay */}
@@ -69,9 +73,19 @@ const App: React.FC = () => {
                     <p className="text-gray-300 mt-2 text-lg">Find your place on the map.</p>
                 </header>
 
-                <main className="flex flex-col items-center gap-4 pointer-events-auto">
+                <main className="flex flex-col items-center gap-4 pointer-events-auto text-center">
                     <MyLocationButton onClick={handleLocateMe} isLoading={loading} />
-                    {error && <p className="text-red-400 bg-red-900/50 px-4 py-2 rounded-md shadow-lg">{error}</p>}
+                    {error && <p className="text-red-400 bg-red-900/50 px-4 py-2 rounded-md shadow-lg max-w-sm">{error}</p>}
+                    {location && !loading && !error && (
+                        <div className="bg-gray-800/60 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg pointer-events-auto">
+                            <p className="text-teal-300">
+                                Location found with an accuracy of <span className="font-bold">{Math.round(location.accuracy)}</span> meters.
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                (Accuracy may vary based on your device and environment)
+                            </p>
+                        </div>
+                    )}
                 </main>
             </div>
         </div>
