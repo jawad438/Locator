@@ -1,0 +1,5 @@
+{
+  "name": "Satellite Locator",
+  "description": "A modern, dark-themed web application that displays a satellite map and allows users to pinpoint their current location with a single click.",
+  "requestFramePermissions": []
+}
